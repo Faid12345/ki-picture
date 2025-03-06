@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-container {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        #prompt-input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+        }
+        #generate-btn {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #generate-btn:hover {
+            background-color: #45a049;
+        }
+        .result-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .generated-image {
+            max-width: 100%;
+            max-height: 500px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .prompt-text {
+            color: #666;
+            font-style: italic;
+            margin-top: 10px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            display: none;
+        }
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        .gallery-item {
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .gallery-image {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .gallery-prompt {
+            padding: 10px;
+            font-size: 14px;
+            color: #666;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+    </style>
+</head>
+<body>
+    <h1>AI Image Generator</h1>
+
+    <div class="input-container">
+        <input type="text" id="prompt-input" placeholder="Enter a description of the image you want to generate...">
+        <button id="generate-btn">Generate</button>
+    </div>
+
+    <div class="loading" id="loading">
+        <p>Generating your image...</p>
+    </div>
+
+    <div class="result-container" id="result-container" style="display: none;">
+        <img id="generated-image" class="generated-image" src="" alt="Generated Image">
+        <p class="prompt-text" id="prompt-text"></p>
+    </div>
+
+    <h2>Previous Generations</h2>
+    <div class="gallery" id="gallery"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const promptInput = document.getElementById('prompt-input');
+            const generateBtn = document.getElementById('generate-btn');
+            const loading = document.getElementById('loading');
+            const resultContainer = document.getElementById('result-container');
+            const generatedImage = document.getElementById('generated-image');
+            const promptText = document.getElementById('prompt-text');
+            const gallery = document.getElementById('gallery');
+
+            // Load previous images
+            fetchImages();
+
+            generateBtn.addEventListener('click', generateImage);
+
+            // Also allow pressing Enter to generate
+            promptInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    generateImage();
+                }
+            });
+
+            function generateImage() {
+                const prompt = promptInput.value.trim();
+                if (!prompt) {
+                    alert('Please enter a prompt');
+                    return;
+                }
+
+                // Show loading, hide result
+                loading.style.display = 'block';
+                resultContainer.style.display = 'none';
+
+                // Call the API
+                fetch('/api/generate_image', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Hide loading, show result
+                    loading.style.display = 'none';
+                    resultContainer.style.display = 'block';
+
+                    // Update image and prompt text
+                    generatedImage.src = data.image_url;
+                    promptText.textContent = `"${data.prompt}"`;
+
+                    // Add to gallery
+                    addToGallery(data);
+
+                    // Clear input
+                    promptInput.value = '';
+                })
+                .catch(error => {
+                    loading.style.display = 'none';
+                    alert('Error generating image: ' + error.message);
+                });
+            }
+
+            function fetchImages() {
+                fetch('/api/images')
+                .then(response => response.json())
+                .then(images => {
+                    // Clear gallery
+                    gallery.innerHTML = '';
+
+                    // Add each image to gallery
+                    images.forEach(img => {
+                        addToGallery(img);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching images:', error);
+                });
+            }
+
+            function addToGallery(image) {
+                const item = document.createElement('div');
+                item.className = 'gallery-item';
+
+                const img = document.createElement('img');
+                img.className = 'gallery-image';
+                img.src = image.image_url;
+                img.alt = image.prompt;
+
+                const prompt = document.createElement('div');
+                prompt.className = 'gallery-prompt';
+                prompt.textContent = image.prompt;
+
+                item.appendChild(img);
+                item.appendChild(prompt);
+
+                // Add to the beginning of the gallery
+                gallery.insertBefore(item, gallery.firstChild);
+            }
+        });
+    </script>
+</body>
+</html>
+
