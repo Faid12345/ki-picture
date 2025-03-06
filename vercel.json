@@ -1,0 +1,16 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/generate_image.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "templates/index.html",
+      "use": "@vercel/static"
+    }
+  ],
+  "env": {
+    "HF_TOKEN": "@hf-token"  
+  }
+}
